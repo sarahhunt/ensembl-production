@@ -142,6 +142,19 @@ sub assembly {
   return $dba->get_CoordSystemAdaptor()->fetch_all()->[0]->version();
 }
 
+sub genebuild {
+  my ($self) = @_;
+  my $dba = $self->get_DBAdaptor();
+  my $mc = $dba->get_MetaContainer();
+  # get the last update otherwise get the start date
+  my $genebuild = $mc->single_value_by_key('genebuild.last_geneset_update');
+  if (! $name) {
+    $genebuild = $mc->get_genebuild(); 
+  }
+  $dba->dbc()->disconnect_if_idle();
+  return $genebuild;
+}
+
 sub production_name {
   my ($self, $name) = @_;
   my $dba;
