@@ -47,6 +47,8 @@ Allowed parameters are:
 
 =item type - The type of bed file we are generating. See code for allowed types
 
+=item bed_to_big_bed - Location of the bedToBigBed binary
+
 =back
 
 =cut
@@ -65,11 +67,10 @@ sub fetch_input {
     
   throw "Need a species" unless $self->param_is_defined('species');
   throw "Need a base_path" unless $self->param_is_defined('base_path');
-  throw "Need to know what type we are converting. Allowed are ".$self->allowed_types() unless $self->param_is_defined('type');
+  throw "Need a bed file to convert" unless $self->param_is_defined('bed');
+  throw "Need to know what type we are converting. We currently allow: ".$self->allowed_types() unless $self->param_is_defined('type');
 
-  throw "No BedToBigBed executable given" 
-    unless $self->param('bed_to_big_bed');
-  $self->assert_executable($self->param('bed_to_big_bed'));
+  $self->assert_executable('bed_to_big_bed', 'bedToBigBed');
 
   return;
 }
@@ -79,18 +80,14 @@ sub run {
   
   my $bed_to_big_bed = $self->param('bed_to_big_bed');
   my $chrom_sizes = $self->chrom_sizes_file();
-  my $bed = $self->generate_bed_file_name();
-  my $big_bed = $self->generate_bigbed_file_name();
-  my $auto_sql = $self->generate_file_name('as');
+  my $bed = $self->param('bed');
+  my $big_bed = $bed;
+  $big_bed =~ s/\.bed$/.bb/;
+
   my $type_map = $self->type_to_params();
-
-  work_with_file($auto_sql, 'w', sub {
-    my ($fh) = @_;
-    print $fh $type_map->{as};
-    return;
-  });
-
-  my $extra_index = (@{$type_map->{extra_index}}) ? '-extraIndex='.join(q{,}, @{$type_map->{extra_index}}) : q{};
+  my $auto_sql = $self->auto_sql($type_map);
+  
+  my $extra_index = (defined $type_map->{extra_index} && @{$type_map->{extra_index}}) ? '-extraIndex='.join(q{,}, @{$type_map->{extra_index}}) : q{};
   my $cmd = sprintf('%s -type=%s -as=%s %s %s %s %s', 
     $bed_to_big_bed, $type_map->{type}, $auto_sql, $extra_index, $bed, $chrom_sizes, $big_bed);
   $self->run_cmd($cmd);
@@ -98,9 +95,20 @@ sub run {
   return;
 }
 
+sub auto_sql {
+  my ($self, $type_map) = @_;
+  my $auto_sql_path = $self->generate_file_name('as', $self->param('type'));
+  work_with_file($auto_sql_path, 'w', sub {
+    my ($fh) = @_;
+    print $fh $type_map->{as};
+    return;
+  });
+  return $auto_sql_path;
+}
+
 sub allowed_types {
   my ($self) = @_;
-  return keys %{$self->_types_map()};
+  return join(q{, }, keys %{$self->_types_map()});
 }
 
 sub type_to_params {
@@ -155,7 +163,18 @@ table bed12ext "Ensembl genes with a Gene Symbol and human readable name assigne
 AS
     },
     repeat => {
-
+      type => 'bed6',
+      as => <<'AS',
+table bed6 "Repeats on a genome"
+    (
+    string chrom;      "Chromosome (or contig, scaffold, etc.)"
+    uint   chromStart; "Start position in chromosome"
+    uint   chromEnd;   "End position in chromosome"
+    string name;       "Stable ID of the transcript"
+    uint   score;      "Score from 0-1000"
+    char[1] strand;    "+ or -"
+)
+AS
     },
   };
 }

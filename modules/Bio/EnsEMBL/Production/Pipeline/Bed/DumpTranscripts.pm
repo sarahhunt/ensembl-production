@@ -24,124 +24,53 @@ limitations under the License.
 
 =head1 NAME
 
-Bio::EnsEMBL::Production::Pipeline::Bed::DumpFile
+Bio::EnsEMBL::Production::Pipeline::Bed::DumpTranscripts
 
 =head1 DESCRIPTION
 
-The main workhorse of the Bed dumping pipeline.
-
-Allowed parameters are:
-
-=over 8
-
-=item species - The species to dump
-
-=item base_path - The base of the dumps
-
-=item group - The database group to dump from
-
-=back
+Dumps all transcripts
 
 =cut
 
-package Bio::EnsEMBL::Production::Pipeline::Bed::DumpFile;
+package Bio::EnsEMBL::Production::Pipeline::Bed::DumpTranscripts;
 
 use strict;
 use warnings;
 
-use base qw(Bio::EnsEMBL::Production::Pipeline::Bed::Base);
+use base qw(Bio::EnsEMBL::Production::Pipeline::Bed::BaseDumpBed);
 
-use Bio::EnsEMBL::Utils::Exception qw/throw/;
-use Bio::EnsEMBL::Utils::IO qw/work_with_file/;
-use File::Path qw/rmtree/;
-
-sub param_defaults {
-  return {
-    group => 'core',
-  };
+sub type {
+  return 'transcript';
 }
 
-sub fetch_input {
+# File name format looks like:
+# <species>.<assembly>.<genebuild>.<type>
+# e.g. Homo_sapiens.GRCh37.2013-04.bed
+sub generate_file_name {
   my ($self) = @_;
-  throw "Need a species" unless $self->param_is_defined('species');
-  throw "Need a base_path" unless $self->param_is_defined('base_path');
-  return;
+  return $self->SUPER::generate_file_name($self->genebuild());
 }
 
-sub run {
-  my ($self) = @_;
-
-  my $path = $self->generate_bed_file_name();
-  $self->info("Dumping BED to %s", $path);
-  work_with_file($path, 'w', sub {
-    my ($fh) = @_;
-    
-    # now get all slices and filter for 1st portion of human Y
-    # my $slices = $self->get_Slices($self->param('group'), 1);
-    my $slices = [$self->get_DBAdaptor('core')->get_SliceAdaptor()->fetch_by_toplevel_location('22')];
-    my @sorted_slices = 
-      map { $_->[0] } sort { $a->[1] cmp $b->[1] } map { [$_, $self->get_name_from_Slice($_)] } 
-      @{$slices};
-
-    $DB::single=1;;
-    while (my $slice = shift @sorted_slices) {
-      my @sorted_transcripts = 
+sub get_Features {
+  my ($self, $slice) = @_;
+  my @sorted_transcripts = 
         sort { $a->seq_region_start() <=> $b->seq_region_start() }
         @{$slice->get_all_Transcripts(1)};
-
-      while( my $transcript = shift @sorted_transcripts) {
-        $self->write_Feature($fh, $transcript);
-      }
-      last;
-    }
-  }); 
-  
-  return;
+  return \@sorted_transcripts;
 }
 
 sub feature_to_bed_array {
-  my ($self, $feature) = @_;
-  my $chr_name = $self->get_name_from_Slice($feature->slice());
-  my $start = $feature->seq_region_start() - 1;
-  my $end = $feature->seq_region_end();
-  my $strand = ($feature->seq_region_strand() == -1) ? '-' : '+'; 
-  my $display_id = $feature->display_id();
-  return [ $chr_name, $start, $end, $display_id, 0, $strand ];
-}
-
-sub _cdna_to_genome {
-  my ($self, $transcript, $coord) = @_;
-  my @mapped = $transcript->cdna2genomic($coord, $coord);
-  my $genomic_coord = $mapped[0]->start();
-  return $genomic_coord;
-}
-
-sub write_Feature {
-  my ($self, $fh, $feature) = @_;
-  return unless $feature;
-  my $bed_array;
-  if($feature->isa('Bio::EnsEMBL::Transcript')) {
-    $bed_array = $self->write_Transcript($feature);
-  }
-  elsif($feature->isa('Bio::EnsEMBL::RepeatFeature')) {
-    $bed_array = $self->write_scored_Feature($feature);
-  }
-  else {
-    $bed_array = $self->_feature_to_bed_array($feature);
-  }
-  my $bed_line = join("\t", @{$bed_array});
-  print $fh $bed_line, "\n";
-  return 1;
-}
-
-sub write_Transcript {
   my ($self, $transcript) = @_;
+
+  #Get BED array
+  my $bed_array = $self->_feature_to_bed_array($transcript);
 
   # Not liking this. If we are in this situation we need to re-fetch the transcript
   # just so the thing ends up on the right Slice!
   my $new_transcript = $transcript->transfer($transcript->slice()->seq_region_Slice());
   $new_transcript->get_all_Exons(); # force exon loading
-  my $bed_array = $self->feature_to_bed_array($transcript);
+
+  # Start working with the coords
   my $bed_genomic_start = $bed_array->[1]; #remember this is in 0 coords
   my ($coding_start, $coding_end, $exon_starts_string, $exon_lengths_string, $exon_count, $rgb) = (0,0,q{},q{},0,0);
   
@@ -185,11 +114,11 @@ sub write_Transcript {
   return $bed_array;
 }
 
-sub write_scored_Feature {
-  my ($self, $feature) = @_;
-  my $bed_array = $self->feature_to_bed_array($feature);
-  $bed_array->[4] = $feature->score();
-  return $bed_array;
+sub _cdna_to_genome {
+  my ($self, $transcript, $coord) = @_;
+  my @mapped = $transcript->cdna2genomic($coord, $coord);
+  my $genomic_coord = $mapped[0]->start();
+  return $genomic_coord;
 }
 
 1;

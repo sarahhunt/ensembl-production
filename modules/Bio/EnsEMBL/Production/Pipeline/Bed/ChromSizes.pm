@@ -28,7 +28,9 @@ Bio::EnsEMBL::Production::Pipeline::Bed::DumpFile
 
 =head1 DESCRIPTION
 
-Produces the Chromosome Sizes which is required by UCSC's bedToBigBed utility
+Produces the Chromosome Sizes which is required by UCSC's bedToBigBed utility. We 
+dump sizes in alphabetical order (not that the UCSC utilities expect this but
+it is nice to do it and shows how bed files should be stored).
 
 Allowed parameters are:
 
@@ -56,7 +58,7 @@ use Bio::EnsEMBL::Utils::IO qw/work_with_file/;
 
 sub param_defaults {
   return {
-    ucsc => 0,
+    ucsc => 1,
   };
 }
 
@@ -75,12 +77,15 @@ sub run {
   work_with_file($path, 'w', sub {
     my ($fh) = @_;
     # now get all slices and filter for 1st portion of human Y
-    my $slices = $self->get_Slices('core', 1);
-    while (my $slice = shift @{$slices}) {
-      #If UCSC names are wanted then use the get_name_from_Slice() method to convert
-      my $name = ($ucsc) ? $self->get_name_from_Slice($slice) : $slice->seq_region_name();
-      my $length = $slice->seq_region_length();
-      print $fh "${name}\t${length}\n";
+    my @slices = 
+      sort { $a->[0] cmp $b->[0] } 
+      # If UCSC names are wanted then use the get_name_from_Slice() method to convert
+      # also add the slice length
+      map { my $name = ($ucsc) ? $self->get_name_from_Slice($_) : $_->seq_region_name(); [$name, $_->seq_region_length] } 
+      @{$self->get_Slices('core', 1)};
+
+    while (my $slice_array = shift @slices) {
+      print $fh join("\t", @{$slice_array}), "\n";
     }
     return;
   }); 

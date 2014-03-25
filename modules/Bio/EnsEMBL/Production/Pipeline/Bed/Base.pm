@@ -22,6 +22,14 @@ use strict;
 use warnings;
 use base qw/Bio::EnsEMBL::Production::Pipeline::Base/;
 use File::Spec;
+use Bio::EnsEMBL::Utils::Exception qw/throw/;
+
+sub assert_executable {
+	my ($self, $key, $exe) = @_;
+	$exe //= $key;
+	throw "No ${exe} executable given" unless $self->param_is_defined($key);
+  return $self->SUPER::assert_executable($self->param($key));
+}
 
 sub data_path {
   my ($self) = @_;
@@ -30,40 +38,28 @@ sub data_path {
   return $self->get_dir('bed', $self->param('species'));
 }
 
-sub generate_bed_file_name {
+# Always set to Homo_sapiens.GRCh37.chrom.sizes (no reason not to)
+sub chrom_sizes_file {
   my ($self) = @_;
-  return $self->generate_file_name('bed');
-}
-
-sub generate_bigbed_file_name {
-  my ($self) = @_;
-  return $self->generate_file_name('bb');
+  return $self->generate_file_name('chrom.sizes');
 }
 
 sub generate_file_name {
-  my ($self, $fiile_type) = @_;
+  my ($self, $file_type, @additional_parts) = @_;
 
   # File name format looks like:
-  # <species>.<assembly>.<genebuild>.<type>
-  # e.g. Homo_sapiens.GRCh37.2013-04.bed
+  # <species>.<assembly>.<additional>.<filetype>
+
   my @name_bits;
   push @name_bits, $self->web_name();
   push @name_bits, $self->assembly();
-  push @name_bits, $self->genebuild();
-  push @name_bits, $fiile_type;
+  push @name_bits, @additional_parts;
+  push @name_bits, $file_type;
 
   my $file_name = join( '.', @name_bits );
   my $path = $self->data_path();
 
   return File::Spec->catfile($path, $file_name);
-}
-
-# Always set to GRCh37.chrom.sizes (no reason not to)
-sub chrom_sizes_file {
-  my ($self) = @_;
-  my $assembly = $self->assembly;
-  my $file_name = "${assembly}.chrom.sizes";
-  return File::Spec->catfile($self->data_path(), $file_name);
 }
 
 =head2 get_name_from_Slice
