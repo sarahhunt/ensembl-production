@@ -30,7 +30,17 @@ sub data_path {
   return $self->get_dir('bed', $self->param('species'));
 }
 
-sub generate_genebuild_file_name {
+sub generate_bed_file_name {
+  my ($self) = @_;
+  return $self->generate_file_name('bed');
+}
+
+sub generate_bigbed_file_name {
+  my ($self) = @_;
+  return $self->generate_file_name('bb');
+}
+
+sub generate_file_name {
   my ($self, $fiile_type) = @_;
 
   # File name format looks like:
@@ -40,7 +50,7 @@ sub generate_genebuild_file_name {
   push @name_bits, $self->web_name();
   push @name_bits, $self->assembly();
   push @name_bits, $self->genebuild();
-  push @name_bits, $type;
+  push @name_bits, $fiile_type;
 
   my $file_name = join( '.', @name_bits );
   my $path = $self->data_path();
@@ -102,7 +112,7 @@ sub get_name_from_Slice {
 sub _get_seq_region_cache {
 	my ($self) = @_;
 	my $cache;
-	if(! $self->is_param_defined('seq_region_cache')) {
+	if(! $self->param_is_defined('seq_region_cache')) {
 		$cache = $self->param('seq_region_cache', {});
 	}
 	else {

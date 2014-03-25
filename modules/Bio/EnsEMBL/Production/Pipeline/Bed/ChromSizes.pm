@@ -14,18 +14,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 
-=cut
-
-=pod
-
-
 =head1 CONTACT
 
   Please email comments or questions to the public Ensembl
-  developers list at <http://lists.ensembl.org/mailman/listinfo/dev>.
+  developers list at L<http://lists.ensembl.org/mailman/listinfo/dev>.
 
   Questions may also be sent to the Ensembl help desk at
-  <http://www.ensembl.org/Help/Contact>.
+  L<http://www.ensembl.org/Help/Contact>.
 
 =head1 NAME
 
@@ -59,10 +54,16 @@ use base qw(Bio::EnsEMBL::Production::Pipeline::Bed::Base);
 use Bio::EnsEMBL::Utils::Exception qw/throw/;
 use Bio::EnsEMBL::Utils::IO qw/work_with_file/;
 
+sub param_defaults {
+  return {
+    ucsc => 0,
+  };
+}
+
 sub fetch_input {
   my ($self) = @_;
-  throw "Need a species" unless $self->param('species');
-  throw "Need a base_path" unless $self->param('base_path');
+  throw "Need a species" unless $self->param_is_defined('species');
+  throw "Need a base_path" unless $self->param_is_defined('base_path');
   return;
 }
 
@@ -70,12 +71,14 @@ sub run {
   my ($self) = @_;
   my $path = $self->chrom_sizes_file();
   $self->info("Dumping Chromsome Sizes to %s", $path);
+  my $ucsc = $self->param('ucsc');
   work_with_file($path, 'w', sub {
     my ($fh) = @_;
     # now get all slices and filter for 1st portion of human Y
-    my $slices = $self->get_Slices($self->param('group'), 1);
+    my $slices = $self->get_Slices('core', 1);
     while (my $slice = shift @{$slices}) {
-      my $name = $self->get_name_from_Slice($slice);
+      #If UCSC names are wanted then use the get_name_from_Slice() method to convert
+      my $name = ($ucsc) ? $self->get_name_from_Slice($slice) : $slice->seq_region_name();
       my $length = $slice->seq_region_length();
       print $fh "${name}\t${length}\n";
     }

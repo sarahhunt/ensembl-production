@@ -148,7 +148,7 @@ sub genebuild {
   my $mc = $dba->get_MetaContainer();
   # get the last update otherwise get the start date
   my $genebuild = $mc->single_value_by_key('genebuild.last_geneset_update');
-  if (! $name) {
+  if (! $genebuild) {
     $genebuild = $mc->get_genebuild(); 
   }
   $dba->dbc()->disconnect_if_idle();
