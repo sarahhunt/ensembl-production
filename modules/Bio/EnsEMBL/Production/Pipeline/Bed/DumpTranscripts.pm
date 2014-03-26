@@ -46,9 +46,17 @@ sub type {
 # File name format looks like:
 # <species>.<assembly>.<genebuild>.<type>
 # e.g. Homo_sapiens.GRCh37.2013-04.bed
+# e.g. Homo_sapiens.GRCh37.GENCODE_19.bed
 sub generate_file_name {
   my ($self) = @_;
-  return $self->SUPER::generate_file_name($self->genebuild());
+  my $version = $self->get_DBAdaptor()->get_MetaContainer()->single_value_by_key('gencode.version');
+  if($version) {
+    $version =~ s/\s+/_/;
+  }
+  else {
+    $version = $self->genebuild();
+  }
+  return $self->SUPER::generate_file_name($version);
 }
 
 sub get_Features {
