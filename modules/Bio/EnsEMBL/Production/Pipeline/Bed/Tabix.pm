@@ -62,7 +62,6 @@ sub default_params {
 
 sub fetch_input {
   my ($self) = @_;
-  $self->SUPER::fetch_input();
   throw "Need a bed file to convert" unless $self->param_is_defined('bed');
   $self->assert_executable('bgzip');
   $self->assert_executable('tabix');
