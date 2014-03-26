@@ -118,11 +118,11 @@ sub type_to_params {
 
 sub _types_map {
   return {
-    transcript => {
+    bed12 => {
       type => 'bed12',
       extra_index => [qw/name/],
       as => <<AS,
-table bed12Source "Ensembl transcripts with stable id as a name"
+table bed12Source "12 column bed data source"
     (
     string chrom;      "Chromosome (or contig, scaffold, etc.)"
     uint   chromStart; "Start position in chromosome"

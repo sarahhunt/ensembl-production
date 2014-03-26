@@ -111,6 +111,15 @@ sub feature_to_bed_array {
   #TODO Consider setting RGB
 
   push(@{$bed_array}, $coding_start, $coding_end, $rgb, $exon_count, $exon_lengths_string, $exon_starts_string);
+
+  #Now get the parent Gene and extract the stable id and display label
+  if($transcript->adaptor()) {
+    my $gene = $transcript->get_Gene();
+    my $display_name = $gene->external_name();
+    $display_name //= '.';
+    push(@{$bed_array}, $gene->display_id(), $display_name);
+  }
+
   return $bed_array;
 }
 
