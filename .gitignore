@@ -33,3 +33,4 @@ a.out
 *.class
 MultiTestDB.conf
 /reg.pm
+/bed
