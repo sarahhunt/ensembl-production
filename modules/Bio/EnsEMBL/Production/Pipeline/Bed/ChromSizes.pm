@@ -62,13 +62,6 @@ sub param_defaults {
   };
 }
 
-sub fetch_input {
-  my ($self) = @_;
-  throw "Need a species" unless $self->param_is_defined('species');
-  throw "Need a base_path" unless $self->param_is_defined('base_path');
-  return;
-}
-
 sub run {
   my ($self) = @_;
   my $path = $self->chrom_sizes_file();

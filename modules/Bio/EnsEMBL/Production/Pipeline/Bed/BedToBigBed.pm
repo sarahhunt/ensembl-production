@@ -64,9 +64,7 @@ use Bio::EnsEMBL::Utils::IO qw/work_with_file/;
 
 sub fetch_input {
   my ($self) = @_;
-    
-  throw "Need a species" unless $self->param_is_defined('species');
-  throw "Need a base_path" unless $self->param_is_defined('base_path');
+  $self->SUPER::fetch_input();
   throw "Need a bed file to convert" unless $self->param_is_defined('bed');
   throw "Need to know what type we are converting. We currently allow: ".$self->allowed_types() unless $self->param_is_defined('type');
 

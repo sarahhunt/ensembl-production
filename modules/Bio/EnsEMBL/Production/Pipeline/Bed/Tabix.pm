@@ -24,11 +24,11 @@ limitations under the License.
 
 =head1 NAME
 
-Bio::EnsEMBL::Production::Pipeline::Bed::BedToTabix
+Bio::EnsEMBL::Production::Pipeline::Bed::Tabix
 
 =head1 DESCRIPTION
 
-Compresses a Bed file using bgzip and then indexes it using tabix
+Compresses an input file using bgzip and then indexes it using tabix
 
 Allowed parameters are:
 
@@ -40,11 +40,13 @@ Allowed parameters are:
 
 =item tabix - Location of the tabix binary
 
+=item format_type - The format type. Defaults to bed (should be used in the -s param to tabix)
+
 =back
 
 =cut
 
-package Bio::EnsEMBL::Production::Pipeline::Bed::BedToTabix;
+package Bio::EnsEMBL::Production::Pipeline::Bed::Tabix;
 
 use strict;
 use warnings;
@@ -52,10 +54,15 @@ use warnings;
 use base qw(Bio::EnsEMBL::Production::Pipeline::Bed::Base);
 use Bio::EnsEMBL::Utils::Exception qw/throw/;
 
+sub default_params {
+  return {
+    format_type => 'bed',
+  };
+}
+
 sub fetch_input {
   my ($self) = @_;
-  throw "Need a species" unless $self->param_is_defined('species');
-  throw "Need a base_path" unless $self->param_is_defined('base_path');
+  $self->SUPER::fetch_input();
   throw "Need a bed file to convert" unless $self->param_is_defined('bed');
   $self->assert_executable('bgzip');
   $self->assert_executable('tabix');
@@ -82,8 +89,7 @@ sub run_bgzip {
 sub run_tabix {
   my ($self, $bgzip) = @_;
   throw "'${bgzip}' bed.gz file does not exist. Cannot continue" unless -f $bgzip;
-  my $tabix = $self->param('tabix');
-  my $cmd = sprintf('%s -p bed %s', $tabix, $bgzip);
+  my $cmd = sprintf('%s -p %s %s', $self->param('tabix'), $self->param('format_type'), $bgzip);
   $self->run_cmd($cmd);
   return;
 }

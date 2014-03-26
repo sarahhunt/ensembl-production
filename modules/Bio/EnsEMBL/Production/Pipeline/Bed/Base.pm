@@ -23,6 +23,14 @@ use warnings;
 use base qw/Bio::EnsEMBL::Production::Pipeline::Base/;
 use File::Spec;
 use Bio::EnsEMBL::Utils::Exception qw/throw/;
+use Bio::EnsEMBL::Utils::Scalar qw/check_ref/;
+
+sub fetch_input {
+  my ($self) = @_;
+  throw "Need a species" unless $self->param_is_defined('species');
+  throw "Need a base_path" unless $self->param_is_defined('base_path');
+  return;
+}
 
 sub assert_executable {
 	my ($self, $key, $exe) = @_;
@@ -74,9 +82,15 @@ sub get_name_from_Slice {
 	my ($self, $slice) = @_;
 	
 	my $cache = $self->_get_seq_region_cache();
-
-	my $seq_region_name = $slice->seq_region_name();
+  my $is_slice = check_ref($slice, 'Bio::EnsEMBL::Slice');
+	my $seq_region_name = ($is_slice) ? $slice->seq_region_name() : $slice;
 	return $cache->{$seq_region_name} if exists $cache->{$seq_region_name};
+
+  # If it's not a slice then we should fetch it for the entire chromosome
+  if(! $is_slice) {
+    my $slice_adaptor = $self->get_DBAdaptor()->get_SliceAdaptor();
+    $slice = $slice_adaptor->fetch_by_region('toplevel', $slice);
+  }
 
 	my $ucsc_name;
   my $has_adaptor = ($slice->adaptor()) ? 1 : 0;
