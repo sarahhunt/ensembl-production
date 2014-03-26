@@ -32,3 +32,4 @@ a.out
 *.obj
 *.class
 MultiTestDB.conf
+/reg.pm
