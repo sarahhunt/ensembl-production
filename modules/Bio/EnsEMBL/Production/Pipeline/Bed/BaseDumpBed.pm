@@ -62,6 +62,13 @@ sub param_defaults {
   };
 }
 
+sub fetch_input {
+  my ($self) = @_;
+  $self->SUPER::fetch_input();
+  $self->param('type', $self->type());
+  return;
+}
+
 sub run {
   my ($self) = @_;
 
@@ -78,6 +85,7 @@ sub run {
       }
     }
   }); 
+  $self->param('bed', $path);
   
   return;
 }

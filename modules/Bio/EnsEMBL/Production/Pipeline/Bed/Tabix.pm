@@ -54,7 +54,7 @@ use warnings;
 use base qw(Bio::EnsEMBL::Production::Pipeline::Bed::Base);
 use Bio::EnsEMBL::Utils::Exception qw/throw/;
 
-sub default_params {
+sub param_defaults {
   return {
     format_type => 'bed',
   };
@@ -79,10 +79,15 @@ sub run_bgzip {
   my ($self) = @_;
   my $bgzip = $self->param('bgzip');
   my $file = $self->param('bed');
+
+  my $final_file = "${file}.gz";
+  return $final_file if -f $final_file;
+  
   throw "'${file}' bed file does not exist. Cannot continue" unless -f $file;
+
   my $cmd = sprintf('%s %s', $bgzip, $file);
   $self->run_cmd($cmd);
-  return "${file}.gz";
+  return $final_file;
 }
 
 sub run_tabix {

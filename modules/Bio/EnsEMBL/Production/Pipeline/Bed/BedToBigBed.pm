@@ -137,7 +137,7 @@ table bed12Source "12 column bed data source"
 )
 AS
     },
-    transcript_extended => {
+    transcript => {
       type => 'bed12+2',
       extra_index => [qw/name geneStableId display/],
       as => <<AS,

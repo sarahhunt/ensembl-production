@@ -101,10 +101,15 @@ sub run {
       next;
     }
     my $input_id = $self->input_id($dba);
-    push(@species, [ $input_id, 2 ]);
+    push(@species, @{$self->create_dataflows($input_id, $dba)});
   }
   $self->param('species', \@species);
   return;
+}
+
+sub create_dataflows {
+  my ($self, $input_id, $dba) = @_;
+  return [[ $input_id, 2 ]];
 }
 
 sub write_output {

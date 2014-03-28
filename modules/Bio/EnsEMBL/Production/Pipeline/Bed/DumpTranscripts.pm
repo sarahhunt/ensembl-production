@@ -50,12 +50,8 @@ sub type {
 sub generate_file_name {
   my ($self) = @_;
   my $version = $self->get_DBAdaptor()->get_MetaContainer()->single_value_by_key('gencode.version');
-  if($version) {
-    $version =~ s/\s+/_/;
-  }
-  else {
-    $version = $self->genebuild();
-  }
+  $version =~ s/\s+/_/ if $version;
+  $version ||= $self->genebuild();
   return $self->SUPER::generate_file_name($version);
 }
 
