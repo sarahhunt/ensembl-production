@@ -112,8 +112,8 @@ sub get_track_def {
 # Returns slices sorted by name
 sub get_bed_Slices {
   my ($self) = @_;
-  # my $slices = $self->get_Slices($self->param('group'), 1);
-  my $slices = [$self->get_DBAdaptor('core')->get_SliceAdaptor()->fetch_by_toplevel_location('22:30000000..40000000')];
+  my $slices = $self->get_Slices($self->param('group'), 1);
+  # my $slices = [$self->get_DBAdaptor('core')->get_SliceAdaptor()->fetch_by_toplevel_location('22:30000000..40000000')];
 
   my @sorted_slices = 
       map { $_->[0] } sort { $a->[1] cmp $b->[1] } map { [$_, $self->get_name_from_Slice($_)] } 
