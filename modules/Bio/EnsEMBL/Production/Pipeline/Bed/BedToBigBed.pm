@@ -174,6 +174,20 @@ table bed6 "Repeats on a genome"
 )
 AS
     },
+    constrained_element => {
+      type => 'bed6',
+      as => <<'AS',
+table bed6 "Constrained elements on a genome via MSA"
+    (
+    string chrom;      "Chromosome (or contig, scaffold, etc.)"
+    uint   chromStart; "Start position in chromosome"
+    uint   chromEnd;   "End position in chromosome"
+    string name;       "Stable ID of the transcript"
+    uint   score;      "Score from 0-1000"
+    char[1] strand;    "+ or -"
+)
+AS
+    },
   };
 }
 

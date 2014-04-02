@@ -93,7 +93,7 @@ sub run_bgzip {
 sub run_tabix {
   my ($self, $bgzip) = @_;
   throw "'${bgzip}' bed.gz file does not exist. Cannot continue" unless -f $bgzip;
-  my $cmd = sprintf('%s -p %s %s', $self->param('tabix'), $self->param('format_type'), $bgzip);
+  my $cmd = sprintf('%s -f -p %s %s', $self->param('tabix'), $self->param('format_type'), $bgzip);
   $self->run_cmd($cmd);
   return;
 }

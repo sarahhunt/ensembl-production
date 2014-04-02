@@ -34,18 +34,27 @@ sub default_options {
     ### OVERRIDE
     # base_path => '',
 
-    ### Optional overrides        
+    ### Optional overrides
+
+    # Specify the species to use
     species => [],
 
+    # Force the running of anything
     force => 0,
-
     release => software_version(),
     
+    # Binaries
     bed_to_big_bed => 'bedToBigBed',
     bgzip => 'bgzip',
     tabix => 'tabix',
 
-    ### Defaults 
+    # Compara db is multi by default
+    compara => 'multi',
+
+    # Always force the flow to genebuild because of display ids
+    force_flow => ['genebuild'],
+
+    ### Defaults
 
     pipeline_name => 'bed_dump_'.$self->o('release'),
 
@@ -57,9 +66,14 @@ sub default_options {
 sub pipeline_analyses {
   my ($self) = @_;
 
-  my $bed_flow = { 'species' => '#species#' };
-  my $bigbed_flow = { 'species' => '#species#', 'type' => '#type#', 'bed' => '#bed#'};
-  my $tabix_flow = { 'species' => '#species#', 'bed' => '#bed#'};
+  my $bed_flow    = { 'species' => '#species#' };
+  my $bigbed_flow = { 1 => { 
+    'BedToBigBed' => { 'species' => '#species#', 'type' => '#type#', 'bed' => '#bed#' },
+    # Accumulators require the flow param hash to have a key which matches the acummulator key.
+    # Here we've got a key called track which will be holding an Array. The second flow hash
+    # holds the data we will push into the track array and this is keyed by "track" as well.
+    ':////accu?track=[]' => { track => { def => '#def#', species => '#species#' } } 
+  }};
 
   return [
     {
@@ -71,55 +85,84 @@ sub pipeline_analyses {
       },
       -input_ids  => [ {} ],
       -flow_into  => {
-        1 => {'ChromSizes' => { 'species' => '#name#' }},
+        '2->A' => ['ChromSizes'],
+        'A->1' => ['BuildTrackHub'],
       },
     },
 
     {
       -logic_name => 'ChromSizes',
       -module     => 'Bio::EnsEMBL::Production::Pipeline::Bed::ChromSizes',
-      -flow_into => {
-        1 => { 'Repeats' =>  $bed_flow, 'Transcripts' => $bed_flow}
+      -flow_into  => { 1 => ['ProductionFlow'] },
+    },
+
+    {
+      -logic_name => 'ProductionFlow',
+      -module     => 'Bio::EnsEMBL::Production::Pipeline::Bed::ProductionFlow',
+      -parameters => { force_flow => $self->o('force_flow') },
+      -flow_into  => {
+        1 => ['ConstrainedElements', ':////accu?input_species={species}'], #Flow to no-matter what
+        # 2 => [''],      #Assembly based updates
+        3 => ['Repeats'],     #Repeat based updates
+        4 => ['Transcripts'], #Gene based updates
       },
     },
 
     {
       -logic_name => 'Repeats',
       -module     => 'Bio::EnsEMBL::Production::Pipeline::Bed::DumpRepeats',
-      -flow_into => {
-        1 => { 'BedToBigBed' => $bigbed_flow, 'Tabix' => $tabix_flow }
-      },
+      -flow_into => $bigbed_flow,
     },
 
     {
       -logic_name => 'Transcripts',
       -module     => 'Bio::EnsEMBL::Production::Pipeline::Bed::DumpTranscripts',
-      -flow_into => {
-        1 => { 'BedToBigBed' => $bigbed_flow, 'Tabix' => $tabix_flow }
+      -flow_into => $bigbed_flow,
+    },
+
+    {
+      -logic_name => 'ConstrainedElements',
+      -module     => 'Bio::EnsEMBL::Production::Pipeline::Bed::DumpConstrainedElements',
+      -parameters => {
+        compara => $self->o('compara'),
       },
+      -flow_into => $bigbed_flow,
     },
 
     {
       -logic_name => 'BedToBigBed',
       -module     => 'Bio::EnsEMBL::Production::Pipeline::Bed::BedToBigBed',
       -parameters => { bed_to_big_bed => $self->o('bed_to_big_bed') },
+      -flow_into => { 
+        1 => { 
+          'Tabix' => { 'species' => '#species#', 'bed' => '#bed#' },
+        } 
+      }
     },
 
+    # Tabix only gets the data after successful bigbed runs otherwise it "steals" the file via gzip
     {
       -logic_name => 'Tabix',
       -module     => 'Bio::EnsEMBL::Production::Pipeline::Bed::Tabix',
       -parameters => { bgzip => $self->o('bgzip'), tabix => $self->o('tabix') },
     },
 
+    {
+      -logic_name => 'BuildTrackHub',
+      -module     => 'Bio::EnsEMBL::Production::Pipeline::Bed::BuildTrackHub',
+    },
+
   ];
 }
 
 sub pipeline_wide_parameters {
-    my ($self) = @_;    
-    return {
-        %{ $self->SUPER::pipeline_wide_parameters() },  # inherit other stuff from the base class
-        base_path => $self->o('base_path'),
-    };
+  my ($self) = @_;    
+  return {
+    %{ $self->SUPER::pipeline_wide_parameters() },  # inherit other stuff from the base class
+    base_path => $self->o('base_path'),
+    release => $self->o('release'),
+    force => $self->o('force'),
+  };
 }
 
 # override the default method, to force an automatic loading of the registry in all workers
@@ -131,7 +174,7 @@ sub beekeeper_extra_cmdline_options {
 sub resource_classes {
     my $self = shift;
     return {
-      'default'  => { LSF => '-q normal -M2000 -R"select[mem>2000] rusage[mem=2000]"' },
+      'default'  => { LSF => '-q normal -M4000 -R"select[mem>4000] rusage[mem=4000]"' },
     }
 }
 

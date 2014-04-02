@@ -39,11 +39,18 @@ sub assert_executable {
   return $self->SUPER::assert_executable($self->param($key));
 }
 
-sub data_path {
+sub raw_data_path {
   my ($self) = @_;
-  $self->throw("No 'species' parameter specified")
-    unless $self->param('species');
-  return $self->get_dir('bed', $self->param('species'));
+  return $self->get_dir('hub');
+}
+
+sub data_path {
+  my ($self, $species) = @_;
+  if(! defined $species) {
+    $species = $self->param_required('species');
+  }
+  my $production_name = $self->production_name($species);
+  return $self->get_dir('hub', $production_name);
 }
 
 # Always set to Homo_sapiens.GRCh37.chrom.sizes (no reason not to)
@@ -52,22 +59,33 @@ sub chrom_sizes_file {
   return $self->generate_file_name('chrom.sizes');
 }
 
+sub gencode_version {
+  my ($self, $species) = @_;
+  my $version = $self->get_DBAdaptor($species)->get_MetaContainer()->single_value_by_key('gencode.version');
+  return if ! defined $version;
+  $version =~ s/\s+/_/ if $version;
+  return $version;
+}
+
 sub generate_file_name {
   my ($self, $file_type, @additional_parts) = @_;
+  my $file_name = $self->generate_raw_file_name($file_type, @additional_parts);
+  my $path = $self->data_path();
+  return File::Spec->catfile($path, $file_name);
+}
 
+# Just generate the file name not the entire path
+sub generate_raw_file_name {
+  my ($self, $file_type, @additional_parts) = @_;
   # File name format looks like:
   # <species>.<assembly>.<additional>.<filetype>
-
   my @name_bits;
   push @name_bits, $self->web_name();
   push @name_bits, $self->assembly();
-  push @name_bits, @additional_parts;
-  push @name_bits, $file_type;
-
+  push @name_bits, @additional_parts if @additional_parts;
+  push @name_bits, $file_type if defined  $file_type;
   my $file_name = join( '.', @name_bits );
-  my $path = $self->data_path();
-
-  return File::Spec->catfile($path, $file_name);
+  return $file_name;
 }
 
 =head2 get_name_from_Slice

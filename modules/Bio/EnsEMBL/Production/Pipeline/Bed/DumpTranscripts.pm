@@ -49,10 +49,30 @@ sub type {
 # e.g. Homo_sapiens.GRCh37.GENCODE_19.bed
 sub generate_file_name {
   my ($self) = @_;
-  my $version = $self->get_DBAdaptor()->get_MetaContainer()->single_value_by_key('gencode.version');
-  $version =~ s/\s+/_/ if $version;
+  return $self->SUPER::generate_file_name($self->get_version());
+}
+
+sub get_version {
+  my ($self) = @_;
+  my $version = $self->gencode_version();
   $version ||= $self->genebuild();
-  return $self->SUPER::generate_file_name($version);
+  return $version;
+}
+
+sub get_track_def {
+  my ($self, $track_name, $big_bed_file) = @_;
+  my $source = $self->gencode_version();
+  $source =~ s/_/ / if $source;
+  $source //= 'Ensembl';
+  my $genebuild = $self->genebuild();
+
+  return <<DEF;
+track ${track_name}
+bigDataUrl ${big_bed_file}
+shortLabel ${source} Transcripts
+longLabel Transcripts generated for ${source}. Genebuild date ${genebuild}
+type bigBed
+DEF
 }
 
 sub get_Features {

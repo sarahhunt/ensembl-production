@@ -98,7 +98,7 @@ sub get_DBAdaptor {
   my ($self, $type) = @_;
 
   $type ||= 'core';
-  my $species = ($type eq 'production')?'multi':$self->param('species');
+  my $species = ($type eq 'production') ? 'multi' : $self->param('species');
 
   return Bio::EnsEMBL::Registry->get_DBAdaptor($species, $type);
 }
@@ -120,25 +120,37 @@ sub get_dir {
 }
 
 sub web_name {
-  my ($self) = @_;
+  my ($self, $name) = @_;
 #  my $mc = $self->get_DBAdaptor()->get_MetaContainer();
 #  my $name = $mc->single_value_by_key('species.url'); # change back
-  my $name = ucfirst($self->production_name());
-  return $name;
+  my $web_name = ucfirst($self->production_name($name));
+  return $web_name;
 }
 
 sub scientific_name {
-  my ($self) = @_;
-  my $dba = $self->get_DBAdaptor();
+  my ($self, $name) = @_;
+  my $dba;
+  if($name) {
+    $dba = Bio::EnsEMBL::Registry->get_DBAdaptor($name, 'core');
+  }
+  else {
+    $dba = $self->get_DBAdaptor();
+  }
   my $mc = $dba->get_MetaContainer();
-  my $name = $mc->get_scientific_name();
+  my $scientific_name = $mc->get_scientific_name();
   $dba->dbc()->disconnect_if_idle();
-  return $name;
+  return $scientific_name;
 }
 
 sub assembly {
-  my ($self) = @_;
-  my $dba = $self->get_DBAdaptor();
+  my ($self, $name) = @_;
+  my $dba;
+  if($name) {
+    $dba = Bio::EnsEMBL::Registry->get_DBAdaptor($name, 'core');
+  }
+  else {
+    $dba = $self->get_DBAdaptor();
+  }
   return $dba->get_CoordSystemAdaptor()->fetch_all()->[0]->version();
 }
 
@@ -288,6 +300,13 @@ sub run_cmd {
 sub get_production_DBAdaptor {
   my ($self) = @_;
   return Bio::EnsEMBL::Registry->get_DBAdaptor('multi', 'production');
+}
+
+## Compara database adaptor
+sub get_compara_DBAdaptor {
+  my ($self) = @_;
+  my $name = ($self->param_is_defined('compara')) ? $self->param('compara') : 'multi';
+  return Bio::EnsEMBL::Registry->get_DBAdaptor($name, 'compara');
 }
 
 

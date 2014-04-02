@@ -20,64 +20,16 @@ package Bio::EnsEMBL::Production::Pipeline::Bed::SpeciesFactory;
 
 use strict;
 use warnings;
-use Bio::EnsEMBL::Registry;
 
-use base qw/Bio::EnsEMBL::Hive::RunnableDB::JobFactory/;
+use base qw/Bio::EnsEMBL::Production::Pipeline::SpeciesFactory/;
 
-sub param_defaults {
-  my ($self) = @_;
-  return {
-    species => [],
-    column_names => [qw/name/],
+sub input_id {
+  my ($self, $dba, $type) = @_;
+  my $mc = $dba->get_MetaContainer();
+  my $input_id = {
+    species => $mc->get_production_name(),
   };
-}
-
-sub fetch_input {
-  my ($self) = @_;
-
-  my $species_lookup = {
-    map { $_ => 1 } 
-    map { Bio::EnsEMBL::Registry->get_alias($_)  } 
-    @{$self->param('species')}
-  };
-
-  my $dbas = Bio::EnsEMBL::Registry->get_all_DBAdaptors(-GROUP => 'core');
-  my @inputlist;
-  foreach my $dba (@{$dbas}) {
-    if(!$self->process_dba($dba, $species_lookup)) {
-      next;
-    }
-    push(@inputlist, $dba->get_MetaContainer()->get_production_name());
-    $dba->dbc()->disconnect_if_idle();
-  }
-  $self->param('inputlist', \@inputlist);
-  return 1;
-}
-
-sub process_dba {
-  my ($self, $dba, $species_lookup) = @_;
-  
-  #Reject if DB was ancestral sequences
-  return 0 if $dba->species() =~ /ancestral/i;
-  return 1 if $self->param('force');
-  
-  #If species is defined then make sure we only allow those species through
-  if(%{$species_lookup}) {
-    my $name = $dba->species();
-    my $aliases = Bio::EnsEMBL::Registry->get_all_aliases($name);
-    push(@{$aliases}, $name);
-    my $found = 0;
-    foreach my $alias (@{$aliases}) {
-      if($species_lookup->{$alias}) {
-        $found = 1;
-        last;
-      }
-    }
-    return $found;
-  }
-  
-  #Otherwise just accept
-  return 1;
+  return $input_id;
 }
 
 1;

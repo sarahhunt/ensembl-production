@@ -55,10 +55,12 @@ use base qw(Bio::EnsEMBL::Production::Pipeline::Bed::Base);
 
 use Bio::EnsEMBL::Utils::Exception qw/throw/;
 use Bio::EnsEMBL::Utils::IO qw/work_with_file/;
+use File::Basename qw/basename/;
 
 sub param_defaults {
   return {
     group => 'core',
+    write_track_def => 1,
   };
 }
 
@@ -86,7 +88,7 @@ sub run {
     }
   }); 
   $self->param('bed', $path);
-  
+  $self->write_track_def();
   return;
 }
 
@@ -102,11 +104,16 @@ sub get_Features {
   $self->throw('Please implement get_Features()');
 }
 
+sub get_track_def {
+  my ($self) = @_;
+  $self->throw('Please implement get_track_def()');
+}
+
 # Returns slices sorted by name
 sub get_bed_Slices {
   my ($self) = @_;
   # my $slices = $self->get_Slices($self->param('group'), 1);
-  my $slices = [$self->get_DBAdaptor('core')->get_SliceAdaptor()->fetch_by_toplevel_location('22')];
+  my $slices = [$self->get_DBAdaptor('core')->get_SliceAdaptor()->fetch_by_toplevel_location('22:30000000..40000000')];
 
   my @sorted_slices = 
       map { $_->[0] } sort { $a->[1] cmp $b->[1] } map { [$_, $self->get_name_from_Slice($_)] } 
@@ -124,6 +131,25 @@ sub write_Feature {
   return 1;
 }
 
+# Call the method get_track_def() which returns the track config
+# and then write it out to a file. We then set the file path as
+# param('def')
+sub write_track_def {
+  my ($self) = @_;
+  return unless $self->param('write_track_def');
+  my $file = $self->generate_track_def_file_name();
+  work_with_file($file, 'w', sub {
+    my ($fh) = @_;
+    my $track_name = basename($self->param('bed'));
+    $track_name =~ s/\.bed$//;
+    my $big_bed_file = $track_name.'.bb';
+    print $fh $self->get_track_def($track_name, $big_bed_file);
+    return;
+  });
+  $self->param('def', $file);
+  return;
+}
+
 sub feature_to_bed_array {
   my ($self, $feature) = @_;
   return $self->_feature_to_bed_array($feature);
@@ -135,7 +161,7 @@ sub _feature_to_bed_array {
   my $chr_name = $self->get_name_from_Slice($feature->slice());
   my $start = $feature->seq_region_start() - 1;
   my $end = $feature->seq_region_end();
-  my $strand = ($feature->seq_region_strand() == -1) ? '-' : '+'; 
+  my $strand = ($feature->seq_region_strand() == -1) ? '-' : '+';
   my $display_id = $feature->display_id();
   return [ $chr_name, $start, $end, $display_id, 0, $strand ];
 }
@@ -160,5 +186,12 @@ sub generate_file_name {
   return $self->SUPER::generate_file_name('bed', $self->type(), @additional_parts);
 }
 
+# Generate the normal name but sub .def for .bed
+sub generate_track_def_file_name {
+  my ($self, @additional_parts) = @_;
+  my $file = $self->generate_file_name(@additional_parts);
+  $file =~ s/\.bed$/.def/;
+  return $file;
+}
 
 1;
