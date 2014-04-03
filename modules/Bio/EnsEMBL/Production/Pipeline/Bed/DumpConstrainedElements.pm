@@ -62,7 +62,7 @@ track ${track_name}
 bigDataUrl ${big_bed_file}
 shortLabel Constrained elements
 longLabel Constrained elements generated against assembly ${assembly} for the ${species_set} species collection
-type bigBed
+type bigBed 6 .
 DEF
 }
 

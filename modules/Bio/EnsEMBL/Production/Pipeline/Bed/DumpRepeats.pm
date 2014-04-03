@@ -52,7 +52,7 @@ track ${track_name}
 bigDataUrl ${big_bed_file}
 shortLabel Repeats
 longLabel Repeats generated for ${assembly}
-type bigBed
+type bigBed 6 .
 DEF
 }
 

@@ -71,7 +71,7 @@ track ${track_name}
 bigDataUrl ${big_bed_file}
 shortLabel ${source} Transcripts
 longLabel Transcripts generated for ${source}. Genebuild date ${genebuild}
-type bigBed
+type bigBed 12 +
 thickDrawItem on
 url http://www.ensembl.org/id/$$
 urlLabel Ensembl details:
