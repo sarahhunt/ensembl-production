@@ -66,6 +66,24 @@ type bigBed
 DEF
 }
 
+sub get_autosql {
+  return <<'AS',
+table bed6 "Constrained elements on a genome via MSA"
+    (
+    string chrom;      "Chromosome (or contig, scaffold, etc.)"
+    uint   chromStart; "Start position in chromosome"
+    uint   chromEnd;   "End position in chromosome"
+    string name;       "Identifier of the constrained element"
+    uint   score;      "Score from 0-1000"
+    char[1] strand;    "+ or -"
+)
+AS
+}
+
+sub get_bed_type {
+  return 'bed6';
+}
+
 sub get_Features {
   my ($self, $slice) = @_;
   my $dba = $self->get_compara_DBAdaptor();

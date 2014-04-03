@@ -36,6 +36,10 @@ sub default_options {
 
     ### Optional overrides
 
+    # Specify what locations you want to dump. 
+    # Remember if you run over more than one species all locations must exist
+    locations => [],
+
     # Specify the species to use
     species => [],
 
@@ -68,7 +72,13 @@ sub pipeline_analyses {
 
   my $bed_flow    = { 'species' => '#species#' };
   my $bigbed_flow = { 1 => { 
-    'BedToBigBed' => { 'species' => '#species#', 'type' => '#type#', 'bed' => '#bed#' },
+    'BedToBigBed' => { 
+      'species'         => '#species#', 
+      'bed_type'        => '#bed_type#', 
+      'bed'             => '#bed#', 
+      'autosql'         => '#autosql#', 
+      'bigbed_indexes'  => '#bigbed_indexes#'
+    },
     # Accumulators require the flow param hash to have a key which matches the acummulator key.
     # Here we've got a key called track which will be holding an Array. The second flow hash
     # holds the data we will push into the track array and this is keyed by "track" as well.
@@ -162,6 +172,7 @@ sub pipeline_wide_parameters {
     base_path => $self->o('base_path'),
     release => $self->o('release'),
     force => $self->o('force'),
+    locations => $self->o('locations'),
   };
 }
 

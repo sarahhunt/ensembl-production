@@ -89,6 +89,9 @@ sub run {
   }); 
   $self->param('bed', $path);
   $self->write_track_def();
+  $self->write_autosql();
+  $self->param('bed_type', $self->get_bed_type());
+  $self->param('bigbed_indexes', $self->get_bigbed_indexes());
   return;
 }
 
@@ -109,15 +112,40 @@ sub get_track_def {
   $self->throw('Please implement get_track_def()');
 }
 
+sub get_autosql {
+  my ($self) = @_;
+  $self->throw('Please implement get_autosql()');
+}
+
+sub get_bed_type {
+  my ($self) = @_;
+  $self->throw('Please implement get_bed_type()');
+}
+
+# Returns the fields that should be indexed by BigBed
+sub get_bigbed_indexes {
+  return [];
+}
+
 # Returns slices sorted by name
 sub get_bed_Slices {
   my ($self) = @_;
-  my $slices = $self->get_Slices($self->param('group'), 1);
-  # my $slices = [$self->get_DBAdaptor('core')->get_SliceAdaptor()->fetch_by_toplevel_location('22:30000000..40000000')];
+  my $slices;
+  if($self->param_is_defined('locations') && @{$self->param('locations')}) {
+    $slices = [];
+    my $sa = $self->get_DBAdaptor('core')->get_SliceAdaptor();
+    foreach my $location (@{$self->param('locations')}) {
+      push(@{$slices}, $sa->fetch_by_toplevel_location($location));
+    }
+  }
+  else {
+    $slices = $self->get_Slices($self->param('group'), 1);
+  }
 
   my @sorted_slices = 
       map { $_->[0] } sort { $a->[1] cmp $b->[1] } map { [$_, $self->get_name_from_Slice($_)] } 
       @{$slices};
+
   return \@sorted_slices;
 }
 
@@ -147,6 +175,20 @@ sub write_track_def {
     return;
   });
   $self->param('def', $file);
+  return;
+}
+
+# Call and write the AutoSql def out to a file. All should have one (it's better that way)
+sub write_autosql {
+  my ($self) = @_;
+  my $autosql_path = $self->generate_autosql_file_name();
+  work_with_file($autosql_path, 'w', sub {
+    my ($fh) = @_;
+    my $autosql = $self->get_autosql();
+    print $fh $autosql;
+    return;
+  });
+  $self->param('autosql', $autosql_path);
   return;
 }
 
@@ -191,6 +233,14 @@ sub generate_track_def_file_name {
   my ($self, @additional_parts) = @_;
   my $file = $self->generate_file_name(@additional_parts);
   $file =~ s/\.bed$/.def/;
+  return $file;
+}
+
+# Generate the normal name but sub .as for .bed
+sub generate_autosql_file_name {
+  my ($self, @additional_parts) = @_;
+  my $file = $self->generate_file_name(@additional_parts);
+  $file =~ s/\.bed$/.as/;
   return $file;
 }
 

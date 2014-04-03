@@ -45,7 +45,11 @@ Allowed parameters are:
 
 =item bed - Path to the bed file we are converting
 
-=item type - The type of bed file we are generating. See code for allowed types
+=item autosql - Path to an AutoSql file of the bed file to index
+
+=item bigbed_indexes - Extra indexes to write
+
+=item bed_type - The type fo bed we are creating e.g. bed6 or bed12+2
 
 =item bed_to_big_bed - Location of the bedToBigBed binary
 
@@ -62,14 +66,17 @@ use base qw(Bio::EnsEMBL::Production::Pipeline::Bed::Base);
 use Bio::EnsEMBL::Utils::Exception qw/throw/;
 use Bio::EnsEMBL::Utils::IO qw/work_with_file/;
 
+sub param_defaults {
+  return {
+    bigbed_indexes => [],
+  };
+}
+
 sub fetch_input {
   my ($self) = @_;
   $self->SUPER::fetch_input();
-  throw "Need a bed file to convert" unless $self->param_is_defined('bed');
-  throw "Need to know what type we are converting. We currently allow: ".$self->allowed_types() unless $self->param_is_defined('type');
-
+  $self->param_required($_) for qw/bed bed_type autosql bigbed_indexes/;
   $self->assert_executable('bed_to_big_bed', 'bedToBigBed');
-
   return;
 }
 
@@ -82,114 +89,16 @@ sub run {
   my $big_bed = $bed;
   $big_bed =~ s/\.bed$/.bb/;
 
-  my $type_map = $self->type_to_params();
-  my $auto_sql = $self->auto_sql($type_map);
+  my $bed_type = $self->param_required('bed_type');
+  my $autosql = $self->param_required('autosql');
+  my $indexes = $self->param_required('bigbed_indexes');
   
-  my $extra_index = (defined $type_map->{extra_index} && @{$type_map->{extra_index}}) ? '-extraIndex='.join(q{,}, @{$type_map->{extra_index}}) : q{};
+  my $extra_index = (@{$indexes}) ? '-extraIndex='.join(q{,}, @{$indexes}) : q{};
   my $cmd = sprintf('%s -type=%s -as=%s %s %s %s %s', 
-    $bed_to_big_bed, $type_map->{type}, $auto_sql, $extra_index, $bed, $chrom_sizes, $big_bed);
+    $bed_to_big_bed, $bed_type, $autosql, $extra_index, $bed, $chrom_sizes, $big_bed);
   $self->run_cmd($cmd);
 
   return;
 }
 
-sub auto_sql {
-  my ($self, $type_map) = @_;
-  my $auto_sql_path = $self->generate_file_name('as', $self->param('type'));
-  work_with_file($auto_sql_path, 'w', sub {
-    my ($fh) = @_;
-    print $fh $type_map->{as};
-    return;
-  });
-  return $auto_sql_path;
-}
-
-sub allowed_types {
-  my ($self) = @_;
-  return join(q{, }, keys %{$self->_types_map()});
-}
-
-sub type_to_params {
-  my ($self) = @_;
-  return $self->_types_map()->{$self->param('type')};
-}
-
-sub _types_map {
-  return {
-    bed12 => {
-      type => 'bed12',
-      extra_index => [qw/name/],
-      as => <<AS,
-table bed12Source "12 column bed data source"
-    (
-    string chrom;      "Chromosome (or contig, scaffold, etc.)"
-    uint   chromStart; "Start position in chromosome"
-    uint   chromEnd;   "End position in chromosome"
-    string name;       "Stable ID of the transcript"
-    uint   score;      "Score from 0-1000"
-    char[1] strand;    "+ or -"
-    uint thickStart;   "Start of where display should be thick (start codon)"
-    uint thickEnd;     "End of where display should be thick (stop codon)"
-    uint reserved;     "Used as itemRgb as of 2004-11-22"
-    int blockCount;    "Number of blocks"
-    int[blockCount] blockSizes; "Comma separated list of block sizes"
-    int[blockCount] chromStarts; "Start positions relative to chromStart"
-)
-AS
-    },
-    transcript => {
-      type => 'bed12+2',
-      extra_index => [qw/name geneStableId display/],
-      as => <<AS,
-table bed12ext "Ensembl genes with a Gene Symbol and human readable name assigned (name will be stable id)"
-    (
-    string chrom;      "Chromosome (or contig, scaffold, etc.)"
-    uint   chromStart; "Start position in chromosome"
-    uint   chromEnd;   "End position in chromosome"
-    string name;       "Stable ID of the transcript"
-    uint   score;      "Score from 0-1000"
-    char[1] strand;    "+ or -"
-    uint thickStart;   "Start of where display should be thick (start codon)"
-    uint thickEnd;     "End of where display should be thick (stop codon)"
-    uint reserved;     "Used as itemRgb as of 2004-11-22"
-    int blockCount;    "Number of blocks"
-    int[blockCount] blockSizes; "Comma separated list of block sizes"
-    int[blockCount] chromStarts; "Start positions relative to chromStart"
-    string geneStableId; "Stable ID of the gene"
-    string display; "Display label for the gene"
-)
-AS
-    },
-    repeat => {
-      type => 'bed6',
-      as => <<'AS',
-table bed6 "Repeats on a genome"
-    (
-    string chrom;      "Chromosome (or contig, scaffold, etc.)"
-    uint   chromStart; "Start position in chromosome"
-    uint   chromEnd;   "End position in chromosome"
-    string name;       "Stable ID of the transcript"
-    uint   score;      "Score from 0-1000"
-    char[1] strand;    "+ or -"
-)
-AS
-    },
-    constrained_element => {
-      type => 'bed6',
-      as => <<'AS',
-table bed6 "Constrained elements on a genome via MSA"
-    (
-    string chrom;      "Chromosome (or contig, scaffold, etc.)"
-    uint   chromStart; "Start position in chromosome"
-    uint   chromEnd;   "End position in chromosome"
-    string name;       "Stable ID of the transcript"
-    uint   score;      "Score from 0-1000"
-    char[1] strand;    "+ or -"
-)
-AS
-    },
-  };
-}
-
 1;
-

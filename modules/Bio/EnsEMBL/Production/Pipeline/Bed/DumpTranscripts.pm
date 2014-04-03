@@ -72,7 +72,41 @@ bigDataUrl ${big_bed_file}
 shortLabel ${source} Transcripts
 longLabel Transcripts generated for ${source}. Genebuild date ${genebuild}
 type bigBed
+thickDrawItem on
+url http://www.ensembl.org/id/$$
+urlLabel Ensembl details:
+visibility pack
 DEF
+}
+
+sub get_autosql {
+  return <<'AS',
+table bed12ext "Ensembl genes with a Gene Symbol and human readable name assigned (name will be stable id)"
+    (
+    string chrom;      "Chromosome (or contig, scaffold, etc.)"
+    uint   chromStart; "Start position in chromosome"
+    uint   chromEnd;   "End position in chromosome"
+    string name;       "Stable ID of the transcript"
+    uint   score;      "Score from 0-1000"
+    char[1] strand;    "+ or -"
+    uint thickStart;   "Start of where display should be thick (start codon)"
+    uint thickEnd;     "End of where display should be thick (stop codon)"
+    uint reserved;     "Used as itemRgb as of 2004-11-22"
+    int blockCount;    "Number of blocks"
+    int[blockCount] blockSizes; "Comma separated list of block sizes"
+    int[blockCount] chromStarts; "Start positions relative to chromStart"
+    string geneStableId; "Stable ID of the gene"
+    string display; "Display label for the gene"
+)
+AS
+}
+
+sub get_bed_type {
+  return 'bed12+2';
+}
+
+sub get_bigbed_indexes {
+  return [qw/name geneStableId display/];
 }
 
 sub get_Features {
