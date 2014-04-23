@@ -56,14 +56,13 @@ sub get_track_def {
   my ($self, $track_name, $big_bed_file) = @_;
   my $assembly = $self->assembly();
   my $species_set = $self->param('species_set');
-
-  return <<DEF;
-track ${track_name}
-bigDataUrl ${big_bed_file}
-shortLabel Constrained elements
-longLabel Constrained elements generated against assembly ${assembly} for the ${species_set} species collection
-type bigBed 6 .
-DEF
+  return {
+    track => $track_name,
+    bigDataUrl => $big_bed_file,
+    shortLabel => 'Constrained elements',
+    longLabel => "Constrained elements generated against assembly ${assembly} for the ${species_set} species collection",
+    type => 'bigBed 6 .'
+  };
 }
 
 sub get_autosql {

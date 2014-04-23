@@ -109,7 +109,7 @@ sub get_Features {
 
 sub get_track_def {
   my ($self) = @_;
-  $self->throw('Please implement get_track_def()');
+  $self->throw('Please implement get_track_def(). Should return a HASH');
 }
 
 sub get_autosql {
@@ -171,7 +171,10 @@ sub write_track_def {
     my $track_name = basename($self->param('bed'));
     $track_name =~ s/\.bed$//;
     my $big_bed_file = $track_name.'.bb';
-    print $fh $self->get_track_def($track_name, $big_bed_file);
+    my $def = $self->get_track_def($track_name, $big_bed_file);
+    foreach my $key (keys %{$defs}) {
+      print $fh "${key} ${value}\n";
+    }
     return;
   });
   $self->param('def', $file);

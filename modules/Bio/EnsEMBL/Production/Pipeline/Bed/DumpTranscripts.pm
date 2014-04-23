@@ -65,18 +65,21 @@ sub get_track_def {
   $source =~ s/_/ / if $source;
   $source //= 'Ensembl';
   my $genebuild = $self->genebuild();
+  my $bigbed_indexes = $self->get_bigbed_indexes();
+  my $def = {
+    track         => $track_name,
+    bigDataUrl    => $big_bed_file,
+    shortLabel    => "${source} Transcripts",
+    longLabel     => "Transcripts generated for ${source}. Genebuild date ${genebuild}",
+    type          => "bigBed 12 +",
+    thickDrawItem => "on",
+    url           => "http://www.ensembl.org/id/$$",
+    urlLabel      => "Ensembl details:",
+    visibility    => "pack",
+  };
+  $def->{searchIndex} = join(q{,}, @{$bigbed_indexes}) if @{$bigbed_indexes};
 
-  return <<DEF;
-track ${track_name}
-bigDataUrl ${big_bed_file}
-shortLabel ${source} Transcripts
-longLabel Transcripts generated for ${source}. Genebuild date ${genebuild}
-type bigBed 12 +
-thickDrawItem on
-url http://www.ensembl.org/id/$$
-urlLabel Ensembl details:
-visibility pack
-DEF
+  return $def;
 }
 
 sub get_autosql {
@@ -166,7 +169,7 @@ sub feature_to_bed_array {
     $exon_count++;
   }
 
-  #TODO Consider setting RGB
+  #TODO Consider setting RGB. We can do this by pushing things as GOLD when merged, RED when PC & BLUE when the rest
 
   push(@{$bed_array}, $coding_start, $coding_end, $rgb, $exon_count, $exon_lengths_string, $exon_starts_string);
 

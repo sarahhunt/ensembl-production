@@ -46,14 +46,13 @@ sub type {
 sub get_track_def {
   my ($self, $track_name, $big_bed_file) = @_;
   my $assembly = $self->assembly();
-
-  return <<DEF;
-track ${track_name}
-bigDataUrl ${big_bed_file}
-shortLabel Repeats
-longLabel Repeats generated for ${assembly}
-type bigBed 6 .
-DEF
+  return {
+    track => $track_name,
+    bigDataUrl => $big_bed_file,
+    shortLabel => 'Repeats',
+    longLabel => "Repeats generated for ${assembly}",
+    type => 'bigBed 6 .'
+  };
 }
 
 sub get_autosql {
