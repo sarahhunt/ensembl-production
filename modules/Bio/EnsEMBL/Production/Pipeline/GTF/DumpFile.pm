@@ -45,6 +45,8 @@ Allowed parameters are:
 
 =item release - The current release we are emitting
 
+=item process_logic_names - The logic names to write out. If not specified all genes will be dumped
+
 =back
 
 =cut
@@ -64,6 +66,7 @@ use File::Path qw/rmtree/;
 sub param_defaults {
   return {
     group => 'core',
+    process_logic_names => []
   };
 }
 
@@ -103,12 +106,27 @@ sub run {
     # Print information about the current assembly
     $gtf_serializer->print_main_header($self->get_DBAdaptor('core'));
 
+    my $logic_names = $self->param('process_logic_names');
+    my $logic_names_active = @{$logic_names};
+
+    
+    my $write_genes = sub {
+      my ($genes) = @_;
+      while (my $gene = shift @{$genes}) {
+        $gtf_serializer->print_Gene($gene);
+      }
+    };
+
     # now get all slices and filter for 1st portion of human Y
     my $slices = $self->get_Slices($self->param('group'), 1);
     while (my $slice = shift @{$slices}) {
-      my $genes = $slice->get_all_Genes(undef,undef,1); 
-      while (my $gene = shift @{$genes}) {
-        $gtf_serializer->print_Gene($gene);
+      if($logic_names_active) {
+        foreach my $logic_name (@{$logic_names}) {
+          $write_genes->($slice->get_all_Genes($logic_name,undef,1));  
+        }
+      }
+      else {
+        $write_genes->($slice->get_all_Genes(undef,undef,1));
       }
     }
   });

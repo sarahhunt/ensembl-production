@@ -44,7 +44,10 @@ sub default_options {
       release => software_version(),
 
       # always run every species
-      run_all => 0, 
+      run_all => 0,
+
+      #Logic names to process
+      process_logic_names => [],
 
       ### Defaults 
       
@@ -93,7 +96,8 @@ sub pipeline_analyses {
         -module     => 'Bio::EnsEMBL::Production::Pipeline::GTF::DumpFile',
         -parameters => {
           gtf_to_genepred => $self->o('gtftogenepred_exe'),
-          gene_pred_check => $self->o('genepredcheck_exe')
+          gene_pred_check => $self->o('genepredcheck_exe'),
+          process_logic_names => $self->o('process_logic_names'),
         },
         -max_retry_count  => 1, 
         -analysis_capacity => 10, 
