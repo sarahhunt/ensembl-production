@@ -60,30 +60,30 @@ my $release = Bio::EnsEMBL::ApiVersion->software_version();
 
 if(! @ARGV) {
   my @expected_files = (
-    [[qw/blat dna/], ['30001.Homo_sapiens.GRCh38.2bit']],
+    [[qw/blat dna/], ['30001.Homo_sapiens.GRCh37.2bit']],
     [[qw/fasta homo_sapiens cdna/], [qw/
         CHECKSUMS README
-        Homo_sapiens.GRCh38.cdna.all.fa.gz
+        Homo_sapiens.GRCh37.cdna.all.fa.gz
     /]],
     [[qw/fasta homo_sapiens dna/], [qw/
         CHECKSUMS README 
-        Homo_sapiens.GRCh38.dna.chromosome.6.fa.gz
-        Homo_sapiens.GRCh38.dna.chromosome.6.fa.gz
-        Homo_sapiens.GRCh38.dna.chromosome.X.fa.gz
-        Homo_sapiens.GRCh38.dna.primary_assembly.fa.gz
-        Homo_sapiens.GRCh38.dna.toplevel.fa.gz
+        Homo_sapiens.GRCh37.dna.chromosome.6.fa.gz
+        Homo_sapiens.GRCh37.dna.chromosome.6.fa.gz
+        Homo_sapiens.GRCh37.dna.chromosome.X.fa.gz
+        Homo_sapiens.GRCh37.dna.primary_assembly.fa.gz
+        Homo_sapiens.GRCh37.dna.toplevel.fa.gz
     /]],
     [[qw/fasta homo_sapiens ncrna/], [qw/
         CHECKSUMS README
-        Homo_sapiens.GRCh38.ncrna.fa.gz
+        Homo_sapiens.GRCh37.ncrna.fa.gz
     /]],
     [[qw/fasta homo_sapiens pep/], [qw/
         CHECKSUMS README
-        Homo_sapiens.GRCh38.pep.all.fa.gz
+        Homo_sapiens.GRCh37.pep.all.fa.gz
     /]],
     [[qw/fasta homo_sapiens cds/], [qw/
         CHECKSUMS README
-        Homo_sapiens.GRCh38.cds.all.fa.gz
+        Homo_sapiens.GRCh37.cds.all.fa.gz
     /]],
   );
 
