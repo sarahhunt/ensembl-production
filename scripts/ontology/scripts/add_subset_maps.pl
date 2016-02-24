@@ -110,6 +110,7 @@ WHERE   ontology.name = %s
   AND   child_term.ontology_id = closure.ontology_id
   AND   parent_term.is_obsolete = 0
   AND   child_term.is_obsolete = 0
+  AND   closure.confident_relationship = 1
 GROUP BY child_term.term_id, parent_term.term_id
 );
 

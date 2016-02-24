@@ -72,6 +72,7 @@ if ( !GetOptions( 'dbhost|host|h=s' => \$dbhost,
 
 # set up relations configuration
 my $default_relations = [ 'is_a', 'part_of' ];
+my $confident_relations = [ 'is_a', 'part_of', 'occurs_in' ];
 my $config;
 my $test_eval = eval { require Config::Simple };
 
@@ -101,8 +102,8 @@ print "Importing intra-ontology parent-child relations\n";
 $dbh->do(
   q/
    INSERT INTO  closure
-                (child_term_id, parent_term_id, distance, subparent_term_id, ontology_id)
-        SELECT  term_id, term_id, 0, NULL, ontology_id
+                (child_term_id, parent_term_id, distance, subparent_term_id, ontology_id, confident_relationship)
+        SELECT  term_id, term_id, 0, NULL, ontology_id, 1
           FROM  term
          WHERE  is_obsolete = 0/ );
 
@@ -111,9 +112,9 @@ my $rels_join_xaspect = join ',', map { "'$_'" } @$default_relations;
 $dbh->do(
   qq/
   INSERT IGNORE INTO  closure
-                       (child_term_id, parent_term_id, distance, subparent_term_id, ontology_id)
+                       (child_term_id, parent_term_id, distance, subparent_term_id, ontology_id, confident_relationship)
      SELECT DISTINCT
-       r.child_term_id, r.parent_term_id, 0, NULL, r.ontology_id
+       r.child_term_id, r.parent_term_id, 0, NULL, r.ontology_id, 1
      FROM
             term c
        JOIN ontology o ON (c.ontology_id=o.ontology_id)
@@ -142,6 +143,9 @@ while ( @row = $sth->fetchrow_array ) {
 }
 $sth->finish();
 
+# Strong of the confident relationship types for mysql
+my $confident_relationship_str = join ',', map { qq!'$_'! } @$confident_relations;
+
 for my $ontology ( keys %{$relations} ) {
   for my $namespace ( keys %{ $relations->{$ontology} } ) {
     my $rels = $config->{ $ontology . '.' . $namespace };
@@ -154,9 +158,9 @@ for my $ontology ( keys %{$relations} ) {
       $dbh->do(
         qq/
          INSERT IGNORE INTO  closure
-                             (child_term_id, parent_term_id, distance, subparent_term_id, ontology_id)
+                             (child_term_id, parent_term_id, distance, subparent_term_id, ontology_id, confident_relationship)
             SELECT DISTINCT
-             r.child_term_id, r.parent_term_id, 1, r.child_term_id, r.ontology_id
+             r.child_term_id, r.parent_term_id, 1, r.child_term_id, r.ontology_id, IF(rt.name IN ($confident_relationship_str), 1, 0) as confidence
            FROM
                   term c
              JOIN ontology o ON (c.ontology_id=o.ontology_id)
@@ -182,7 +186,8 @@ my $select_sth = $dbh->prepare(
            parent.parent_term_id,
            child.distance + 1,
            parent.child_term_id,
-           child.ontology_id
+           child.ontology_id,
+           child.confident_relationship
      FROM  closure child
      JOIN  closure parent
        ON  (parent.child_term_id = child.parent_term_id)
@@ -197,9 +202,11 @@ my $select_sth = $dbh->prepare(
 
 my $insert_sth = $dbh->prepare(
   q/
-   REPLACE INTO  closure
-                 (child_term_id, parent_term_id, distance, subparent_term_id, ontology_id)
-         VALUES  (?, ?, ?, ?, ?)/ );
+   INSERT INTO closure
+                 (child_term_id, parent_term_id, distance, subparent_term_id, ontology_id, confident_relationship)
+         VALUES  (?, ?, ?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE
+           confident_relationship = IF(confident_relationship = 0, confident_relationship, VALUES(confident_relationship))/ );
 
 my ($oldsize) = $dbh->selectrow_array('SELECT COUNT(1) FROM closure');
 my $newsize;
