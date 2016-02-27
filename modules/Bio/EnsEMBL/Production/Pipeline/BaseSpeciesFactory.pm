@@ -46,6 +46,7 @@ sub param_defaults {
     core_flow       => 2,
     chromosome_flow => 3,
     variation_flow  => 4,
+    compara_flow    => 5,
     div_synonyms    =>
       {
         'eb'  => 'bacteria',
@@ -53,6 +54,7 @@ sub param_defaults {
         'em'  => 'metazoa',
         'epl' => 'plants',
         'epr' => 'protists',
+        'e' => 'ensembl'
       },
     meta_filters    => {},
   };
@@ -70,7 +72,9 @@ sub fetch_input {
   my %meta_filters = %{$self->param('meta_filters')};
 
   my $all_dbas = Bio::EnsEMBL::Registry->get_all_DBAdaptors(-GROUP => 'core');
+  my $all_compara_dbas = Bio::EnsEMBL::Registry->get_all_DBAdaptors(-GROUP => 'compara');
   my %core_dbas;
+  my %compara_dbas;
   
   if (!scalar(@$all_dbas)) {
     $self->throw("No core databases found in the registry; please check your registry parameters.");
@@ -78,11 +82,12 @@ sub fetch_input {
   
   if ($run_all) {
     %core_dbas = map {$_->species => $_} @$all_dbas;
+    %compara_dbas = map {$_->species => $_} @$all_compara_dbas;
     $self->warning(scalar(@$all_dbas)." species loaded");
     
   } elsif (scalar(@division)) {
     foreach my $division (@division) {
-      $self->process_division($all_dbas, $division, \%core_dbas);
+      $self->process_division($all_dbas, $all_compara_dbas, $division, \%core_dbas, \%compara_dbas);
     }
     
   } elsif (scalar(@species)) {
@@ -109,10 +114,11 @@ sub fetch_input {
   }
   
   $self->param('core_dbas', \%core_dbas);
+  $self->param('compara_dbas', \%compara_dbas);
 }
 
 sub process_division {
-  my ($self, $all_dbas, $division, $core_dbas) = @_;
+  my ($self, $all_dbas, $all_compara_dbas, $division, $core_dbas, $compara_dbas) = @_;
   my $division_count = 0;
   
   my %div_synonyms = %{$self->param('div_synonyms')};
@@ -127,10 +133,8 @@ sub process_division {
   foreach my $dba (@$all_dbas) {
     my $dbname = $dba->dbc->dbname();
     if ($dbname =~ /$division\_.+_collection_/) {
-    #if ($dbname =~ /$division\_\d+_collection_/) {
       $$core_dbas{$dba->species()} = $dba;
       $division_count++
-    
     } elsif ($dbname !~ /_collection_/) {
       if ($div_long eq $dba->get_MetaContainer->get_division()) {
         $$core_dbas{$dba->species()} = $dba;
@@ -139,8 +143,22 @@ sub process_division {
       $dba->dbc->disconnect_if_idle();
     }
   }
-  
+
   $self->warning("$division_count species loaded for $division");
+
+  foreach my $dba (@$all_compara_dbas) {
+      my $compara_div = $dba->species();
+      if($compara_div eq 'multi') {
+	  $compara_div = 'ensembl';
+      }
+      if($compara_div eq $division) { 		
+	  $$compara_dbas{$compara_div} = $dba;
+	  $self->warning("Added compara for $division");
+      }
+  }
+  
+  return;
+
 }
 
 sub process_species {
@@ -232,6 +250,7 @@ sub has_variation {
 sub write_output {
   my ($self) = @_;
   my $core_dbas       = $self->param('core_dbas');
+  my $compara_dbas    = $self->param('compara_dbas');
   my $chromosome_dbas = $self->param('chromosome_dbas');
   my $variation_dbas  = $self->param('variation_dbas');
   
@@ -246,6 +265,11 @@ sub write_output {
   foreach my $species (sort keys %$variation_dbas) {
     $self->dataflow_output_id({'species' => $species}, $self->param('variation_flow'));
   }
+
+  foreach my $species (sort keys %$compara_dbas) {
+    $self->dataflow_output_id({'species' => $species}, $self->param('compara_flow'));
+  }
+
 }
 
 1;
