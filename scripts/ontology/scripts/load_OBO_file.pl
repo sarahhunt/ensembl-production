@@ -554,7 +554,6 @@ if ($delete_unknown) {
 my $efo_default_namespace;
 my @returncode = `grep -i "default-namespace: efo" $obo_file_name`;
 @returncode = `grep 'property_value: "hasDefaultNamespace" "EFO"' $obo_file_name` if scalar(@returncode) == 0;
-
 my $returncode = @returncode;
 if ($returncode > 0) {
   printf "Detected an EFO file; performing post-processing\n";
@@ -625,7 +624,6 @@ if($ontology_name eq 'HPO'){
   printf "Switching to loading the file %s which is a post-processed file\n", $new_obo_file_name;
   $obo_file_name = $new_obo_file_name;
 }
-
 
 my $my_parser = OBO::Parser::OBOParser->new;
 
